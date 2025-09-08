@@ -1,0 +1,7 @@
+/* Tailwind v4 */
+@import "tailwindcss";
+
+/* define utilidades personalizadas */
+@utility btn {
+  @apply px-3 py-1 rounded border text-sm hover:bg-gray-50 disabled:opacity-50;
+}
