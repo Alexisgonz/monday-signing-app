@@ -1,2 +1,5 @@
-export { default as PdfCanvas } from './canvas-pdf';
-export { default as PdfToolbar } from './toolbar-pdf';
+// Exporta los componentes como default para evitar conflictos de tipos
+import PdfCanvas from './canvas-pdf';
+import PdfToolbar from './toolbar-pdf';
+
+export { PdfCanvas, PdfToolbar };

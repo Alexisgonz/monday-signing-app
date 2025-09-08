@@ -1,18 +1,24 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import * as dotenv from 'dotenv'
 
-// https://vite.dev/config/
+dotenv.config() // lee MONDAY_TOKEN
+
 export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': {
-        target: 'http://localhost:3005',
+      // Proxy para GraphQL de Monday
+      '/monday': {
+        target: 'https://api.monday.com/v2',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        secure: false,
-        ws: true
-      }
+        secure: true, // TLS verificado
+        rewrite: p => p.replace(/^\/monday/, ''),
+        headers: {
+          // <- se agrega desde el servidor de Vite (no viaja al browser)
+          Authorization: process.env.MONDAY_TOKEN || ''
+        }
+      },
     }
   }
 })

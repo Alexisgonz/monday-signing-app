@@ -1,22 +1,22 @@
 import { http } from "./general-consultation";
 
-export async function fetchPdfBuffer(documentId: string): Promise<ArrayBuffer> {
-  try {
-    console.log(`Fetching PDF for document: ${documentId}`);
-    const { data } = await http.get<ArrayBuffer>(`/documents/${documentId}/pdf`, {
-      responseType: "arraybuffer",
-    });
-    console.log("PDF fetched successfully");
-    return data;
-  } catch (error) {
-    console.error("Error fetching PDF:", error);
-    throw error;
-  }
+export async function fetchPdfBuffer(itemId: string | number) {
+  const res = await http.get(`/documents/${itemId}/pdf`, {
+    responseType: "arraybuffer",
+  });
+  return res.data as ArrayBuffer;
 }
 
-export async function fetchPdfBase64(documentId: string): Promise<string> {
-  const { data } = await http.get<{ base64: string }>(
-    `/documents/${documentId}/pdf-base64`
-  );
-  return data.base64;
+export type ItemMeta = {
+  id: string;
+  name: string;
+  fileUrl: string;
+  emails: string[];
+};
+
+export async function fetchItemMeta(
+  itemId: string | number
+): Promise<ItemMeta> {
+  const { data } = await http.get(`/documents/${itemId}/meta`);
+  return data as ItemMeta;
 }
