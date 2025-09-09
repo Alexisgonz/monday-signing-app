@@ -17,18 +17,17 @@ export default function DocumentPage({ documentId }: Props) {
   if (!url)    return <div className="p-6">Sin URL de documento.</div>
 
   return (
-    <div className="mx-auto max-w-5xl p-4 space-y-4">
-      {/* Entrada para probar distintos items */}
+    <div className="max-w-5xl p-4 mx-auto space-y-4">
       <div className="flex gap-2">
-        <input className="border rounded px-2 py-1 flex-1" value={itemId} onChange={e => setItemId(e.target.value)} />
-        <button className="px-3 py-1 rounded bg-blue-600 text-white" onClick={() => setItemId(itemId.trim())}>
+        <input className="flex-1 px-2 py-1 border rounded" value={itemId} onChange={e => setItemId(e.target.value)} />
+        <button className="px-3 py-1 text-white bg-blue-600 rounded" onClick={() => setItemId(itemId.trim())}>
           Cargar
         </button>
       </div>
 
-      <div className="rounded border p-3 bg-white">
-        <h2 className="font-semibold text-lg">{meta?.name ?? `Item ${itemId}`}</h2>
-        <p className="text-sm font-medium mt-2">Orden de firmantes:</p>
+      <div className="p-3 bg-white border rounded">
+        <h2 className="text-lg font-semibold">{meta?.name ?? `Item ${itemId}`}</h2>
+        <p className="mt-2 text-sm font-medium">Orden de firmantes:</p>
         <ol className="list-decimal list-inside">
           {(meta?.emails ?? []).map((email, i) => <li key={i}>{email}</li>)}
           {(!meta?.emails || meta?.emails.length === 0) && <li className="text-gray-500">Sin correos.</li>}

@@ -1,11 +1,14 @@
-// canvas-pdf.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-// Configuración para react-pdf@8.0.0 y pdfjs-dist@3.11.174 (versiones compatibles)
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js`;
+const PDF_WORKER_URL = `https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js`;
+
+if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+  pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_URL;
+  console.log("PDF worker configurado globalmente");
+}
 
 type Props = {
   fileUrl: string;
@@ -16,8 +19,12 @@ type Props = {
 
 export default function PdfCanvas({ fileUrl, scale, page, onDocumentLoad }: Props) {
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!fileUrl) {
+      setError("No se proporcionó una URL de archivo");
+    }
+  }, [fileUrl]);
 
-  // Maneja errores de forma más explícita
   const handleError = (err: Error) => {
     console.error("Error al cargar el PDF:", err);
     setError(err.message);
@@ -25,7 +32,7 @@ export default function PdfCanvas({ fileUrl, scale, page, onDocumentLoad }: Prop
 
   if (error) {
     return (
-      <div className="p-4 border border-red-300 rounded bg-red-50 text-red-700">
+      <div className="p-4 text-red-700 border border-red-300 rounded bg-red-50">
         <p className="font-bold">Error al cargar el PDF:</p>
         <p>{error}</p>
       </div>
@@ -37,7 +44,7 @@ export default function PdfCanvas({ fileUrl, scale, page, onDocumentLoad }: Prop
       <Document
         file={fileUrl}
         onLoadSuccess={({ numPages }) => onDocumentLoad(numPages)}
-        loading={<div className="py-8 text-center text-sm text-gray-500">Cargando PDF…</div>}
+        loading={<div className="py-8 text-sm text-center text-gray-500">Cargando PDF…</div>}
         onLoadError={handleError}
       >
         <Page pageNumber={page} scale={scale} renderTextLayer renderAnnotationLayer />

@@ -13,7 +13,8 @@ export async function setupPdfWorker() {
     const pdfjs = await import('pdfjs-dist');
     
     // Configuramos el worker desde CDN (funciona tanto en desarrollo como en producción)
-    const workerUrl = '//unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    // Usamos HTTPS explícito para evitar problemas con protocolos relativos
+    const workerUrl = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
     pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
     
     console.info('PDF.js worker cargado correctamente desde:', workerUrl);

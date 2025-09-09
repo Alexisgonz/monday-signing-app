@@ -1,47 +1,60 @@
-// src/connector/use-monday-pdf.ts
-import { useEffect, useState } from 'react'
-import { fetchItemMeta } from '../services/pdf.service';
+import { useEffect, useState } from 'react';
+import { fetchItemMeta } from '../services/monday';
+
+function toProxied(url: string) {
+  if (url.startsWith('/proxy-file?u=')) return url;
+  return `/proxy-file?u=${encodeURIComponent(url)}`;
+}
 
 export function useMondayPdf(itemId: string) {
-  const [url, setUrl] = useState<string | null>(null)
-  const [meta, setMeta] = useState<{ name: string; emails: string[] } | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
-
-  // liberar blob al desmontar
-  useEffect(() => () => { if (url) URL.revokeObjectURL(url) }, [url])
+  const [url, setUrl] = useState<string | null>(null);
+  const [meta, setMeta] = useState<{ name: string; emails: string[] } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(
+    () => () => {
+      if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
+    },
+    [url],
+  );
 
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
+    let cancelled = false;
+
+    (async () => {
       try {
-        setLoading(true)
-        setErr(null)
-        setUrl(null)
+        setLoading(true);
+        setErr(null);
+        setUrl(null);
 
-        const m = await fetchItemMeta(itemId)
-        if (cancelled) return
-        setMeta({ name: m.name, emails: m.emails })
+        console.log('Fetching metadata for item:', itemId);
+        const m = await fetchItemMeta(itemId);
+        if (cancelled) return;
 
-        if (!m.fileUrl) throw new Error('Este item no tiene PDF')
+        console.log('Received item metadata:', m);
+        setMeta({ name: m.name, emails: m.emails });
 
-        // si es URL pública (S3), descargamos desde el browser
-        const isPublic = m.fileUrl.startsWith('https://files-monday-com.s3')
-        if (!isPublic) throw new Error('El archivo no tiene public_url (requiere proxy/servidor).')
+        if (!m.fileUrl) {
+          console.error('No fileUrl in item metadata');
+          throw new Error('Este item no tiene PDF');
+        }
+        const proxied = toProxied(m.fileUrl);
+        const absolute = new URL(proxied, window.location.origin).toString();
 
-        const r = await fetch(m.fileUrl)
-        if (!r.ok) throw new Error(`Descarga falló: ${r.status}`)
-        const blob = await r.blob()
-        const objectUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
-        setUrl(objectUrl)
+        console.log('File URL (proxied):', absolute);
+        setUrl(absolute);
       } catch (e: any) {
-        if (!cancelled) setErr(e?.message || 'Error cargando PDF')
+        console.error('Error in useMondayPdf:', e);
+        if (!cancelled) setErr(e?.message || 'Error cargando PDF');
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setLoading(false);
       }
-    })()
-    return () => { cancelled = true }
-  }, [itemId])
+    })();
 
-  return { url, meta, loading, err }
+    return () => {
+      cancelled = true;
+    };
+  }, [itemId]);
+
+  return { url, meta, loading, err };
 }
