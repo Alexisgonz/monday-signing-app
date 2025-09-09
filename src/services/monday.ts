@@ -91,8 +91,8 @@ export async function fetchItemMeta(itemId: string | number): Promise<ItemMeta> 
       null;
   }
 
-  const rawUrl = picked?.public_url || picked?.url || null; // S3 firmado o protected_static
-  const fileUrl = toProxied(rawUrl); // 👈 devolvemos URL proxificada
+  const rawUrl = picked?.public_url || picked?.url || null;
+  const fileUrl = toProxied(rawUrl);
 
   return {
     id: String(item.id),

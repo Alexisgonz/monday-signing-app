@@ -13,12 +13,13 @@ if (!pdfjs.GlobalWorkerOptions.workerSrc) {
 type Props = {
   fileUrl: string;
   scale: number;
-  page: number;
+  page?: number; // Ahora es opcional
   onDocumentLoad: (numPages: number) => void;
 };
 
 export default function PdfCanvas({ fileUrl, scale, page, onDocumentLoad }: Props) {
   const [error, setError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number>(0);
   useEffect(() => {
     if (!fileUrl) {
       setError("No se proporcionó una URL de archivo");
@@ -40,14 +41,38 @@ export default function PdfCanvas({ fileUrl, scale, page, onDocumentLoad }: Prop
   }
 
   return (
-    <div className="flex justify-center">
+    <div className="flex flex-col items-center p-4 bg-white rounded-md shadow-sm">
       <Document
         file={fileUrl}
-        onLoadSuccess={({ numPages }) => onDocumentLoad(numPages)}
+        onLoadSuccess={({ numPages }) => {
+          setNumPages(numPages);
+          onDocumentLoad(numPages);
+        }}
         loading={<div className="py-8 text-sm text-center text-gray-500">Cargando PDF…</div>}
         onLoadError={handleError}
       >
-        <Page pageNumber={page} scale={scale} renderTextLayer renderAnnotationLayer />
+        {page ? (
+          // Si se proporciona una página específica, mostrar solo esa página
+          <Page 
+            pageNumber={page} 
+            scale={scale} 
+            renderTextLayer 
+            renderAnnotationLayer 
+            className="mb-8 shadow-sm"
+          />
+        ) : (
+          // Si no se proporciona una página específica, mostrar todas las páginas
+          Array.from(new Array(numPages), (_, index) => (
+            <Page
+              key={`page_${index + 1}`}
+              pageNumber={index + 1}
+              scale={scale}
+              renderTextLayer
+              renderAnnotationLayer
+              className="mb-8 shadow-sm"
+            />
+          ))
+        )}
       </Document>
     </div>
   );

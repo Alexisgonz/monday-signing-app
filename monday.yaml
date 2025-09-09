@@ -1,0 +1,20 @@
+name: Monday Signing App
+description: Aplicación para visualizar y firmar documentos PDF en Monday
+app_type: classic
+# Endpoints necesarios para la app
+public_url: https://tu-url-de-produccion.com
+redirect_url: https://tu-url-de-produccion.com/auth
+custom_auth: false
+# Permisos necesarios
+permissions:
+  - boards:read
+  - items:read
+  - assets:read
+  - columns:read
+  - boards:write # solo si necesitas actualizar el estado del item
+features:
+  - item_view # para mostrar tu visor dentro de items
+  - board_view # opcional, si quieres mostrar tu visor a nivel de tablero
+  - item_action # opcional, si deseas agregar un botón de acción
+min_height_in_board: 100
+min_width_in_board: 100
