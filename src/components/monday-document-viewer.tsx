@@ -33,40 +33,35 @@ export default function MondayDocumentViewer({ itemId }: Props) {
     return <div className="p-6">No se pudo cargar el documento.</div>;
 
   const handleSendToSigner = async () => {
-    const emails = meta.emails ?? [];
-    if (!emails.length) {
-      alert("No hay correos de firmantes configurados en Monday.com.");
-      return;
-    }
+  const emails = meta.emails ?? [];
+  if (!emails.length) {
+    alert("No hay correos de firmantes configurados en Monday.com.");
+    return;
+  }
 
-    try {
-      const result = await sendToSigner({ sequential });
+  try {
+    const result = await sendToSigner({ sequential });
 
-      // Esperamos un objeto con uuid. Si no viene, informamos:
-      if (result && typeof result === "object" && result.uuid) {
-        setCurrentProcessUuid(result.uuid);
-        setShowProcessManager(true);
-
-        // Abre la vista de asignación en Django usando el proxy /signer
-        // (evitas CORS y no hardcodeas 127.0.0.1)
+    if (result && typeof result === "object") {
+      if (result.configure_url) {
+        window.open(result.configure_url, "_blank");
+      } else if (result.uuid) {
         openAssignView(result.uuid, true);
       } else {
-        const dump =
-          typeof result === "string"
-            ? result
-            : JSON.stringify(result ?? {}, null, 2);
-        alert(
-          `La API no devolvió un UUID del proceso.\n\nRespuesta recibida:\n${dump}`
-        );
+        alert("La API no devolvió ni 'configure_url' ni 'uuid'. Revisa la respuesta en la consola.");
+        console.log("Respuesta:", result);
       }
-    } catch (e: any) {
-      alert(`Error enviando documento a firmar:\n\n${e?.message || e}`);
+    } else {
+      alert("Respuesta inválida del servidor.");
+      console.log("Respuesta:", result);
     }
-  };
+  } catch (e: any) {
+    alert(`Error enviando documento a firmar:\n\n${e?.message || e}`);
+  }
+};
 
   return (
     <div className="max-w-5xl p-4 mx-auto space-y-4">
-      {/* Encabezado con info y controles */}
       <div className="px-6 py-4 bg-white rounded-md shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
@@ -85,8 +80,6 @@ export default function MondayDocumentViewer({ itemId }: Props) {
               </div>
             )}
           </div>
-
-          {/* Controles de envío */}
           <div className="w-64 shrink-0">
             <div className="flex items-center gap-2 mb-2">
               <input
@@ -114,8 +107,6 @@ export default function MondayDocumentViewer({ itemId }: Props) {
             </p>
           </div>
         </div>
-
-        {/* Mensajería de envío */}
         {sendError && (
           <div className="p-3 mt-3 text-sm text-red-700 border border-red-200 rounded bg-red-50">
             <p className="font-medium">Error al enviar:</p>
@@ -133,8 +124,6 @@ export default function MondayDocumentViewer({ itemId }: Props) {
           </div>
         )}
       </div>
-
-      {/* Visor PDF */}
       <PdfCanvas
         fileUrl={url}
         scale={scale}

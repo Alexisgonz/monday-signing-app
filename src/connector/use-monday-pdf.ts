@@ -57,9 +57,7 @@ export function useMondayPdf(itemId: string) {
       cancelled = true;
     };
   }, [itemId]);
-
-  // wrapper para enviar a firmar usando el servicio
-  async function sendToSigner({ sequential = false }: { sequential?: boolean }) {
+    async function sendToSigner({ sequential = false }: { sequential?: boolean }) {
     if (!url) throw new Error('No hay URL del documento');
     const emails = meta?.emails ?? [];
     if (!emails.length) throw new Error('No hay correos de firmantes');
@@ -74,15 +72,10 @@ export function useMondayPdf(itemId: string) {
         filename: `${meta?.name || 'documento'}.pdf`,
         emails,
         sequential,
+        mondayId: itemId,
       });
 
       setProcessInfo(res);
-
-      // si tu API devuelve access_token del primer firmante, abrimos la página
-      const token = res.assignments?.[0]?.access_token;
-      if (token) {
-        window.open(`/signer/signatures/${token}/signature_page/`, '_blank');
-      }
       return res;
     } catch (e: any) {
       setSendError(e?.message || 'Error enviando a firmar');

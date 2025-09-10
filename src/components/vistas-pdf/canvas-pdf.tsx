@@ -13,7 +13,7 @@ if (!pdfjs.GlobalWorkerOptions.workerSrc) {
 type Props = {
   fileUrl: string;
   scale: number;
-  page?: number; // Ahora es opcional
+  page?: number;
   onDocumentLoad: (numPages: number) => void;
 };
 
@@ -52,7 +52,6 @@ export default function PdfCanvas({ fileUrl, scale, page, onDocumentLoad }: Prop
         onLoadError={handleError}
       >
         {page ? (
-          // Si se proporciona una página específica, mostrar solo esa página
           <Page 
             pageNumber={page} 
             scale={scale} 
@@ -61,7 +60,6 @@ export default function PdfCanvas({ fileUrl, scale, page, onDocumentLoad }: Prop
             className="mb-8 shadow-sm"
           />
         ) : (
-          // Si no se proporciona una página específica, mostrar todas las páginas
           Array.from(new Array(numPages), (_, index) => (
             <Page
               key={`page_${index + 1}`}

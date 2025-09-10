@@ -21,24 +21,16 @@ export default function DocumentPage({ documentId }: Props) {
     }
     try {
       setSending(true);
-
-      // Enviamos PDF + correos
       const res = await sendToSigner({
-        fileUrl: url,                    // ¡la misma URL que usas para visualizar!
+        fileUrl: url,
         filename: `${meta?.name || "documento"}.pdf`,
         emails,
-        sequential: false,               // cámbialo si necesitas secuencial
+        sequential: false,
       });
-
-      // Intentamos abrir la página de firma
-      // Tu view `signature_page` espera el access_token del assignment en la URL:
-      //   /signatures/<access_token>/signature_page/
       const token = res.assignments?.[0]?.access_token;
       if (token) {
         window.open(`/signer/signatures/${token}/signature_page/`, "_blank");
       } else if (res.uuid) {
-        // Si tu API devolviera sólo el uuid de proceso, puedes abrir alguna
-        // vista de configuración inicial del proceso si la tienes
         window.open(`/signer/signatures/${res.uuid}/signature_page/`, "_blank");
       } else {
         alert("Proceso creado, pero no recibí token/uuid para abrir la página de firma.");

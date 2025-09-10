@@ -11,12 +11,8 @@ import {
 import { request as httpsRequest, Agent as HttpsAgent } from 'node:https'
 import { request as httpRequest } from 'node:http'
 import { URL } from 'node:url'
-
-/** Proxy interno para descargar archivos de Monday/S3 evitando CORS */
 function mondayFileProxy(allowSelfSigned: boolean): PluginOption {
-  // Sólo lo usamos para HTTPS
   const httpsAgent = new HttpsAgent({
-    // si ALLOW_SELF_SIGNED=1 => ignoramos certificados
     rejectUnauthorized: !allowSelfSigned,
   })
 
@@ -35,8 +31,6 @@ function mondayFileProxy(allowSelfSigned: boolean): PluginOption {
 
           const remote = new URL(remoteStr)
           const isHttps = remote.protocol === 'https:'
-
-          // Authorization sólo si es protected_static de Monday
           const headers: Record<string, string> = {}
           if (
             remote.href.includes('monday.com/protected_static') &&
@@ -58,7 +52,6 @@ function mondayFileProxy(allowSelfSigned: boolean): PluginOption {
             opts,
             (up) => {
               res.statusCode = up.statusCode || 500
-              // Pasamos cabeceras tal cual (las que sean seguras)
               for (const [k, v] of Object.entries(up.headers)) {
                 if (typeof v !== 'undefined') res.setHeader(k, v as any)
               }
