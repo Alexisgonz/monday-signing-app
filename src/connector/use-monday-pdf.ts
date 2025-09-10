@@ -1,43 +1,36 @@
 // src/connector/use-monday-pdf.ts
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchItemMeta } from '../services/monday';
-import {
-  createSignatureProcess,
-  configureSignatureFields,
-  downloadAsPdfFile,
-  type ConfigureFieldsPayload,
-} from '../services/signer.service';
-
-type Meta = { name: string; emails: string[] };
+import { sendToSigner as sendToSignerSvc } from '../services/signer.service';
 
 function toProxied(url: string) {
   if (url.startsWith('/proxy-file?u=')) return url;
   return `/proxy-file?u=${encodeURIComponent(url)}`;
 }
 
+type ItemMeta = { name: string; emails: string[] };
+
 export function useMondayPdf(itemId: string) {
   const [url, setUrl] = useState<string | null>(null);
-  const [meta, setMeta] = useState<Meta | null>(null);
+  const [meta, setMeta] = useState<ItemMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // estado para el envío al gestor de firmas
+  // estado para envío al gestor de firmas
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [processInfo, setProcessInfo] = useState<any>(null);
 
-  // liberar blob si lo hubiera (hoy estamos usando URL remota proxied)
-  useEffect(
-    () => () => {
+  // liberar blob al desmontar
+  useEffect(() => {
+    return () => {
       if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
-    },
-    [url],
-  );
+    };
+  }, [url]);
 
-  // Cargar meta (nombre, emails) y URL proxied del PDF
+  // cargar metadatos y url
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
       try {
         setLoading(true);
@@ -60,75 +53,44 @@ export function useMondayPdf(itemId: string) {
         if (!cancelled) setLoading(false);
       }
     })();
-
     return () => {
       cancelled = true;
     };
   }, [itemId]);
 
-  /**
-   * Envía PDF + correos al gestor de firmas (Django).
-   * - sequential: si quieres marcar el flujo secuencial al crear
-   * - fields: payload opcional para /configure_fields/ (si ya tienes assignment_id/document_id)
-   *
-   * Retorna el objeto del proceso creado (con uuid, etc.).
-   */
-  const sendToSigner = useCallback(
-    async (opts?: { sequential?: boolean; fields?: ConfigureFieldsPayload }) => {
-      if (!meta?.emails?.length) throw new Error('No hay correos para firmar.');
-      if (!url) throw new Error('No hay PDF disponible.');
+  // wrapper para enviar a firmar usando el servicio
+  async function sendToSigner({ sequential = false }: { sequential?: boolean }) {
+    if (!url) throw new Error('No hay URL del documento');
+    const emails = meta?.emails ?? [];
+    if (!emails.length) throw new Error('No hay correos de firmantes');
 
+    try {
       setSending(true);
       setSendError(null);
       setProcessInfo(null);
 
-      try {
-        // 1) Descargar el PDF (desde el proxy /proxy-file)
-        console.log('Descargando PDF desde:', url);
-        const file = await downloadAsPdfFile(url, `${meta?.name || 'document'}.pdf`);
-        console.log('PDF descargado correctamente:', file.name, 'tamaño:', file.size);
+      const res = await sendToSignerSvc({
+        fileUrl: url,
+        filename: `${meta?.name || 'documento'}.pdf`,
+        emails,
+        sequential,
+      });
 
-        // 2) Crear proceso en Django
-        console.log('Enviando a API de firmas:', meta.emails, 'secuencial:', opts?.sequential);
-        const proceso = await createSignatureProcess({
-          file,
-          emails: meta.emails,
-          sequential: opts?.sequential,
-        });
-        console.log('Proceso de firma creado exitosamente:', proceso);
+      setProcessInfo(res);
 
-        // 3) (Opcional) Configurar campos/orden si ya los tienes listos
-        if (opts?.fields && proceso?.uuid) {
-          console.log('Configurando campos de firma:', opts.fields);
-          await configureSignatureFields(proceso.uuid, opts.fields);
-          console.log('Campos configurados correctamente');
-        }
-
-        setProcessInfo(proceso);
-        return proceso;
-      } catch (e: any) {
-        console.error('Error al enviar al gestor de firmas:', e);
-        const errorMsg = e?.message || 'Error enviando al gestor de firmas';
-        setSendError(errorMsg);
-        throw e;
-      } finally {
-        setSending(false);
+      // si tu API devuelve access_token del primer firmante, abrimos la página
+      const token = res.assignments?.[0]?.access_token;
+      if (token) {
+        window.open(`/signer/signatures/${token}/signature_page/`, '_blank');
       }
-    },
-    [meta, url],
-  );
+      return res;
+    } catch (e: any) {
+      setSendError(e?.message || 'Error enviando a firmar');
+      throw e;
+    } finally {
+      setSending(false);
+    }
+  }
 
-  return {
-    // datos del PDF de Monday
-    url,
-    meta,
-    loading,
-    err,
-
-    // acciones hacia el gestor de firmas
-    sendToSigner,
-    sending,
-    sendError,
-    processInfo,
-  };
+  return { url, meta, loading, err, sending, sendError, processInfo, sendToSigner };
 }

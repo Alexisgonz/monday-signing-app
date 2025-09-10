@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test de Conexión a Django</title>
+</head>
+<body>
+    <h1>Test de Conexión a la API de Django</h1>
+    
+    <button onclick="testConnection()">Probar Conexión Directa</button>
+    <button onclick="testProxy()">Probar Conexión via Proxy</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        async function testConnection() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h3>Probando conexión directa...</h3>';
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/', {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                results.innerHTML += `<p>✅ Conexión directa: ${response.status} ${response.statusText}</p>`;
+                
+                const text = await response.text();
+                results.innerHTML += `<p>Respuesta: ${text.substring(0, 100)}...</p>`;
+                
+            } catch (error) {
+                results.innerHTML += `<p>❌ Error conexión directa: ${error.message}</p>`;
+            }
+        }
+        
+        async function testProxy() {
+            const results = document.getElementById('results');
+            results.innerHTML += '<h3>Probando conexión via proxy...</h3>';
+            
+            try {
+                const response = await fetch('/signer/', {
+                    method: 'GET'
+                });
+                
+                results.innerHTML += `<p>✅ Conexión proxy: ${response.status} ${response.statusText}</p>`;
+                
+                const text = await response.text();
+                results.innerHTML += `<p>Respuesta: ${text.substring(0, 100)}...</p>`;
+                
+            } catch (error) {
+                results.innerHTML += `<p>❌ Error conexión proxy: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

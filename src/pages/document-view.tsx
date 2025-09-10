@@ -1,43 +1,60 @@
-// src/pages/document-view.tsx
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMondayPdf } from "../connector/use-monday-pdf";
 import { PdfCanvas } from "../components/vistas-pdf";
+import { sendToSigner } from "../services/signer.service";
 
 type Props = { documentId?: string };
 
 export default function DocumentPage({ documentId }: Props) {
-  // ItemId inicial: prop -> env -> fallback
-  const initialId = useMemo(
-    () => documentId || import.meta.env.VITE_DEFAULT_ITEM_ID || "9233001281",
-    [documentId]
-  );
-
-  const [itemId, setItemId] = useState<string>(initialId);
-  const [scale] = useState(1.25);
+  const [itemId, setItemId] = useState(documentId || "9233001281");
+  const { url, meta, loading, err } = useMondayPdf(itemId);
+  const [sending, setSending] = useState(false);
+  const [scale] = useState(1.5);
   const [, setPages] = useState(0);
-  const [sequential, setSequential] = useState(false);
 
-  const {
-    url,
-    meta,
-    loading,
-    err,
-    sendToSigner,
-    sending,
-    sendError,
-    processInfo,
-  } = useMondayPdf(itemId);
-
-  const onEnviar = async () => {
+  const onSend = async () => {
+    if (!url) return;
+    const emails = meta?.emails ?? [];
+    if (!emails.length) {
+      alert("No hay correos de firmantes configurados.");
+      return;
+    }
     try {
-      await sendToSigner({ sequential });
-    } catch {
+      setSending(true);
+
+      // Enviamos PDF + correos
+      const res = await sendToSigner({
+        fileUrl: url,                    // ¡la misma URL que usas para visualizar!
+        filename: `${meta?.name || "documento"}.pdf`,
+        emails,
+        sequential: false,               // cámbialo si necesitas secuencial
+      });
+
+      // Intentamos abrir la página de firma
+      // Tu view `signature_page` espera el access_token del assignment en la URL:
+      //   /signatures/<access_token>/signature_page/
+      const token = res.assignments?.[0]?.access_token;
+      if (token) {
+        window.open(`/signer/signatures/${token}/signature_page/`, "_blank");
+      } else if (res.uuid) {
+        // Si tu API devolviera sólo el uuid de proceso, puedes abrir alguna
+        // vista de configuración inicial del proceso si la tienes
+        window.open(`/signer/signatures/${res.uuid}/signature_page/`, "_blank");
+      } else {
+        alert("Proceso creado, pero no recibí token/uuid para abrir la página de firma.");
+        console.log("Respuesta del backend:", res);
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message || "Error enviando a firmar");
+    } finally {
+      setSending(false);
     }
   };
 
   if (loading) return <div className="p-6">Cargando…</div>;
-  if (err)      return <div className="p-6 text-red-600">Error: {err}</div>;
-  if (!url)     return <div className="p-6">Sin URL de documento.</div>;
+  if (err) return <div className="p-6 text-red-600">Error: {err}</div>;
+  if (!url) return <div className="p-6">Sin URL de documento.</div>;
 
   return (
     <div className="max-w-5xl p-4 mx-auto space-y-4">
@@ -46,7 +63,6 @@ export default function DocumentPage({ documentId }: Props) {
           className="flex-1 px-2 py-1 border rounded"
           value={itemId}
           onChange={(e) => setItemId(e.target.value)}
-          placeholder="Item ID de Monday"
         />
         <button
           className="px-3 py-1 text-white bg-blue-600 rounded"
@@ -55,55 +71,35 @@ export default function DocumentPage({ documentId }: Props) {
           Cargar
         </button>
       </div>
+
       <div className="p-3 bg-white rounded-md shadow-sm">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold">
-            {meta?.name ?? `Item ${itemId}`}
-          </h2>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={sequential}
-              onChange={(e) => setSequential(e.target.checked)}
-            />
-            Firmas en secuencia
-          </label>
-        </div>
-
-        <p className="mt-3 text-sm font-medium">Orden de firmantes:</p>
-        <ol className="list-decimal list-inside space-y-1">
-          {(meta?.emails ?? []).map((email, i) => (
-            <li key={i} className="text-sm">{email}</li>
-          ))}
-          {(!meta?.emails || meta?.emails.length === 0) && (
-            <li className="text-sm text-gray-500">Sin correos.</li>
-          )}
-        </ol>
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            className="px-3 py-1 rounded bg-emerald-600 text-white disabled:opacity-60"
-            onClick={onEnviar}
-            disabled={sending || !meta?.emails?.length}
-            title={!meta?.emails?.length ? 'No hay correos' : 'Enviar a firmar'}
-          >
-            {sending ? 'Enviando…' : 'Enviar a firmar'}
-          </button>
-
-          {sendError && (
-            <span className="text-sm text-red-600">Error: {sendError}</span>
-          )}
-        </div>
-        {processInfo && (
-          <div className="mt-3 rounded border p-2 bg-gray-50">
-            <p className="text-sm font-medium mb-1">Proceso creado:</p>
-            <pre className="text-xs whitespace-pre-wrap">
-              {JSON.stringify(processInfo, null, 2)}
-            </pre>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">
+              {meta?.name ?? `Item ${itemId}`}
+            </h2>
+            <p className="mt-2 text-sm font-medium">Orden de firmantes:</p>
+            <ol className="list-decimal list-inside">
+              {(meta?.emails ?? []).map((email, i) => (
+                <li key={i}>{email}</li>
+              ))}
+              {(!meta?.emails || meta?.emails.length === 0) && (
+                <li className="text-gray-500">Sin correos.</li>
+              )}
+            </ol>
           </div>
-        )}
+
+          <button
+            className="h-10 px-4 py-2 text-white rounded bg-emerald-600 disabled:opacity-60"
+            onClick={onSend}
+            disabled={sending || !meta?.emails?.length}
+            title={!meta?.emails?.length ? "No hay firmantes" : "Enviar a firmar"}
+          >
+            {sending ? "Enviando…" : "Enviar a firmar"}
+          </button>
+        </div>
       </div>
 
-      {/* Visor PDF */}
       <PdfCanvas
         fileUrl={url}
         scale={scale}
